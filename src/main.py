@@ -54,12 +54,12 @@ class App:
         self.sender = Sender()
         self.events = queue.Queue()
 
-        self.status = "Нажми «Найти устройства»."
+        self.status = "Нажми «Найти город»."
         self.selected_index = -1
         self.devices = []
 
         self.scan_button = Button(
-            (40, 125, 720, 50), "Найти устройства", BLUE
+            (40, 125, 720, 50), "Найти город", BLUE
         )
         self.connect_button = Button(
             (40, 490, 350, 55), "Подключиться", GREEN
@@ -77,10 +77,10 @@ class App:
         self.screen.fill(BG)
 
         self.draw_text(
-            "BOOM SENDER", 40, 35, WHITE, self.title_font
+            "ЯДЕРНЫЙ ЧЕМОДАНЧИК", 40, 35, WHITE, self.title_font
         )
         self.draw_text(
-            "Управление устройствами в локальной сети",
+            "Управление городами в локальной сети",
             42, 82, GREY, self.small_font
         )
 
@@ -93,7 +93,7 @@ class App:
             border_radius=12,
         )
 
-        self.draw_text("Найденные устройства", 60, 210)
+        self.draw_text("Найденные города", 60, 210)
 
         if not self.devices:
             self.draw_text(
@@ -154,7 +154,7 @@ class App:
         )
 
         if not started:
-            self.status = "Подожди завершения текущей операции."
+            self.status = "слишком много запросов, хватит."
 
     def connect(self):
         if not 0 <= self.selected_index < len(self.devices):
@@ -171,10 +171,10 @@ class App:
         )
 
         if not started:
-            self.status = "Подожди завершения текущей операции."
+            self.status = "не торопись."
 
     def explode(self):
-        self.status = "Отправляем команду..."
+        self.status = "Отправляем ядерку..."
 
         started = self.sender.explode(
             lambda ok, message: self.events.put(
@@ -183,7 +183,7 @@ class App:
         )
 
         if not started:
-            self.status = "Подожди завершения текущей операции."
+            self.status = "не торопись."
 
     def process_events(self):
         while True:
@@ -199,7 +199,7 @@ class App:
                 if error:
                     self.status = f"Ошибка поиска: {error}"
                 elif devices:
-                    self.status = f"Найдено устройств: {len(devices)}"
+                    self.status = f"Найдено городов: {len(devices)}"
                 else:
                     self.status = "Receiver не найден."
 
