@@ -4,8 +4,8 @@ import threading
 import time
 
 
-DISCOVERY_PORT = 37020
-DEFAULT_TCP_PORT = 37021
+DISCOVERY_PORT = 5000
+DEFAULT_TCP_PORT = 5000
 PROTOCOL = "boom-v1"
 
 
