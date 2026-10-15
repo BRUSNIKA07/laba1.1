@@ -4,6 +4,7 @@ import threading
 import queue
 import pygame
 import os
+import sys
 
 PORT = 5000
 PROTOCOL = "boom-v1"
@@ -14,87 +15,83 @@ pygame.init()
 screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 W, H = screen.get_size()
 
-folder = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Images")
-files = [os.path.join(folder, f) for f in os.listdir(folder)
-         if f.lower().endswith((".png", ".jpg", ".jpeg"))][:2]
+folder = os.path.join(
+    getattr(sys, "_MEIPASS", os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "Images"
+)
+
+files = sorted(
+    os.path.join(folder, f) for f in os.listdir(folder)
+    if f.lower().endswith((".png", ".jpg", ".jpeg", ".bmp"))
+)
 
 images = [
     pygame.transform.scale(pygame.image.load(f).convert(), (W, H))
-    for f in files
+    for f in files[:2]
 ]
-
 current = 0
 
 
-def handle_client(conn):
+def client(conn):
     with conn:
         try:
-            data = b""
-            while b"\n" not in data:
-                chunk = conn.recv(4096)
-                if not chunk:
+            msg = b""
+            while b"\n" not in msg:
+                part = conn.recv(4096)
+                if not part:
                     return
-                data += chunk
+                msg += part
 
-            msg = json.loads(data.split(b"\n")[0])
-
-            if msg.get("protocol") == PROTOCOL and msg.get("type") == "CHANGE_IMAGE":
+            data = json.loads(msg.split(b"\n")[0])
+            ok = data.get("protocol") == PROTOCOL and data.get("type") == "CHANGE_IMAGE"
+            if ok:
                 events.put(1)
-                reply = {"status": "OK"}
-            else:
-                reply = {"status": "ERROR"}
 
-            conn.sendall((json.dumps(reply) + "\n").encode())
+            conn.sendall((json.dumps({"status": "OK" if ok else "ERROR"}) + "\n").encode())
         except (OSError, ValueError):
             pass
 
 
-def tcp_server():
+def tcp():
     with socket.socket() as s:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind(("", PORT))
         s.listen()
-
+        s.settimeout(1)
         while running:
             try:
-                s.settimeout(1)
                 conn, _ = s.accept()
-                threading.Thread(target=handle_client, args=(conn,), daemon=True).start()
+                threading.Thread(target=client, args=(conn,), daemon=True).start()
             except socket.timeout:
                 pass
+            except OSError:
+                break
 
 
-def discovery_server():
+def discovery():
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
         s.bind(("", PORT))
         s.settimeout(1)
-
         while running:
             try:
-                data, addr = s.recvfrom(4096)
-                msg = json.loads(data.decode())
-
+                raw, addr = s.recvfrom(4096)
+                msg = json.loads(raw.decode())
                 if msg.get("type") == "DISCOVER" and msg.get("protocol") == PROTOCOL:
-                    reply = {
-                        "type": "RECEIVER",
-                        "protocol": PROTOCOL,
-                        "name": "My Receiver",
-                        "tcp_port": PORT
-                    }
+                    reply = {"type": "RECEIVER", "protocol": PROTOCOL,
+                             "name": "My Receiver", "tcp_port": PORT}
                     s.sendto((json.dumps(reply) + "\n").encode(), addr)
             except (socket.timeout, OSError, ValueError):
                 pass
 
 
-threading.Thread(target=tcp_server, daemon=True).start()
-threading.Thread(target=discovery_server, daemon=True).start()
+threading.Thread(target=tcp, daemon=True).start()
+threading.Thread(target=discovery, daemon=True).start()
 
+clock = pygame.time.Clock()
 try:
     while running:
         for e in pygame.event.get():
-            if e.type == pygame.QUIT or (
-                e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE
-            ):
+            if e.type == pygame.QUIT or (e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE):
                 running = False
 
         while not events.empty():
@@ -103,6 +100,7 @@ try:
 
         screen.blit(images[current], (0, 0))
         pygame.display.flip()
+        clock.tick(60)
 finally:
     running = False
     pygame.quit()
