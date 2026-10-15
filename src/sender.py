@@ -24,7 +24,7 @@ def recv_message(sock):
 class Sender:
     def __init__(self):
         self.devices = []
-        self.connected = None
+        self.connected_device = None
         self.busy = False
 
     def scan(self, callback):
@@ -103,7 +103,7 @@ class Sender:
             callback(True, "Подключено к " + device["name"])
 
         except OSError as exc:
-            self.connected = None
+            self.connected_device = None
             callback(False, str(exc))
 
         finally:
@@ -139,14 +139,14 @@ class Sender:
                 if reply.get("status") != "OK":
                     raise RuntimeError("Receiver отклонил команду")
 
-            callback(True, "💥 Картинка переключена!")
+            callback(True, "Картинка переключена!")
 
         except (OSError, ValueError, RuntimeError) as exc:
-            self.connected = None
+            self.connected_device = None
             callback(False, "Ошибка: " + str(exc))
 
         finally:
             self.busy = False
 
     def disconnect(self):
-        self.connected = None
+        self.connected_device = None
